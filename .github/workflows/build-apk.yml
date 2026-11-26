@@ -15,8 +15,8 @@ jobs:
 
     steps:
       - name: Download project archive
-        run: |Anime_Clicker_v20.zip
-          curl -L --fail -o project.zip "https://github.com/mechanik62reg-droid/anime-clicker-android/raw/main/Anime_Clicker_Android_Fixed_Package.zip"
+        run: |
+          curl -L --fail -o project.zip "https://github.com/mechanik62reg-droid/anime-clicker-android/raw/main/Anime_Clicker_v20.zip"
           mkdir extracted
           unzip -q project.zip -d extracted
           PACKAGE_FILE="$(find extracted -name package.json -type f -print -quit)"
