@@ -2,9 +2,22 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
+    inputs:
+      source_archive:
+        description: Project archive to build
+        required: true
+        type: choice
+        default: Anime_Clicker_v22.zip
+        options:
+          - Anime_Clicker_v22.zip
+          - Anime_Clicker_v21.zip
+          - Anime_Clicker_v20.zip
+          - Anime_Clicker_v19_Smooth_Scroll_No_Shake.zip
+          - Anime_Clicker_Android_v17_Optimized.zip
   push:
     branches:
       - v21-bosses
+      - v22-build-pipeline
 
 permissions:
   contents: read
@@ -12,22 +25,28 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      SOURCE_ARCHIVE: ${{ github.event.inputs.source_archive || 'Anime_Clicker_v22.zip' }}
+      SOURCE_BRANCH: ${{ github.ref_name }}
 
     steps:
-      - name: Download project archive
+      - name: Download and validate project archive
         run: |
-          curl -L --fail -o project.zip "https://github.com/mechanik62reg-droid/anime-clicker-android/raw/v21-bosses/Anime_Clicker_v22.zip"
+          set -euo pipefail
+          curl -L --fail --retry 3 --retry-delay 2 -o project.zip "https://raw.githubusercontent.com/mechanik62reg-droid/anime-clicker-android/${SOURCE_BRANCH}/${SOURCE_ARCHIVE}"
+          unzip -tq project.zip
           mkdir extracted
           unzip -q project.zip -d extracted
           PACKAGE_FILE="$(find extracted -name package.json -type f -print -quit)"
           if [ -z "$PACKAGE_FILE" ]; then
-            echo "package.json not found!"
+            echo "package.json not found in selected archive"
             find extracted -maxdepth 4 -type f | head -80
             exit 1
           fi
           PROJECT_DIR="$(dirname "$PACKAGE_FILE")"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Found project: $PROJECT_DIR"
+          echo "Selected source: $SOURCE_ARCHIVE"
 
       - uses: actions/setup-node@v4
         with:
@@ -39,7 +58,21 @@ jobs:
           java-version: 17
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+        working-directory: ${{ env.PROJECT_DIR }}
+
+      - name: Run project tests when available
+        run: |
+          if node -e "process.exit(require('./package.json').scripts?.test ? 0 : 1)"; then
+            npm test
+          else
+            echo "No npm test script in archive; skipping project tests."
+          fi
         working-directory: ${{ env.PROJECT_DIR }}
 
       - name: Create Android project
@@ -54,9 +87,27 @@ jobs:
         run: ./gradlew assembleDebug
         working-directory: ${{ env.PROJECT_DIR }}/android
 
-      - name: Upload APK
+      - name: Generate build metadata and checksum
+        env:
+          SOURCE_ARCHIVE: ${{ env.SOURCE_ARCHIVE }}
+        run: |
+          APK_PATH="${PROJECT_DIR}/android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK_PATH"
+          mkdir -p release-output
+          cp "$APK_PATH" release-output/app-debug.apk
+          sha256sum release-output/app-debug.apk > release-output/SHA256SUMS.txt
+          {
+            echo "Project: Anime Clicker — Star Academy"
+            echo "Source archive: $SOURCE_ARCHIVE"
+            echo "Branch: ${GITHUB_REF_NAME}"
+            echo "Commit: ${GITHUB_SHA}"
+            echo "Built UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "APK size bytes: $(stat -c %s release-output/app-debug.apk)"
+          } > release-output/BUILD_INFO.txt
+
+      - name: Upload APK and build metadata
         uses: actions/upload-artifact@v4
         with:
-          name: Anime-Clicker-v22-APK
-          path: ${{ env.PROJECT_DIR }}/android/app/build/outputs/apk/debug/app-debug.apk
+          name: Anime-Clicker-APK-${{ github.ref_name }}
+          path: release-output/
           retention-days: 14
