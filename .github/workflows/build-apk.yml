@@ -18,6 +18,7 @@ on:
     branches:
       - v21-bosses
       - v22-build-pipeline
+      - v23-save-normalization
 
 permissions:
   contents: read
@@ -30,6 +31,8 @@ jobs:
       SOURCE_BRANCH: ${{ github.ref_name }}
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download and validate project archive
         run: |
           set -euo pipefail
@@ -56,6 +59,12 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+
+      - name: Apply v23 save-state normalization and tests
+        if: env.SOURCE_ARCHIVE == 'Anime_Clicker_v22.zip'
+        run: |
+          node "$GITHUB_WORKSPACE/scripts/patch-v23-save.js" "$PROJECT_DIR/web/index.html"
+          GAME_HTML="$PROJECT_DIR/web/index.html" node --test "$GITHUB_WORKSPACE/tests/v23-save-normalization.test.js"
 
       - name: Install dependencies
         run: |
@@ -98,6 +107,7 @@ jobs:
           sha256sum release-output/app-debug.apk > release-output/SHA256SUMS.txt
           {
             echo "Project: Anime Clicker — Star Academy"
+            echo "Build label: v23 save-normalization hotfix"
             echo "Source archive: $SOURCE_ARCHIVE"
             echo "Branch: ${GITHUB_REF_NAME}"
             echo "Commit: ${GITHUB_SHA}"
@@ -108,6 +118,6 @@ jobs:
       - name: Upload APK and build metadata
         uses: actions/upload-artifact@v4
         with:
-          name: Anime-Clicker-APK-${{ github.ref_name }}
+          name: Anime-Clicker-v23-APK-${{ github.ref_name }}
           path: release-output/
           retention-days: 14
