@@ -8,10 +8,11 @@
 
 ## v23 — Save-state stability (patch candidate)
 - [x] Extracted v22 HTML from the APK for static review.
-- [x] Found a numeric-type issue in save loading: values like `coins`/ `total` were validated with `Number(...)` but not converted, allowing string concatenation when passive rewards were added.
-- [x] Prepared a patch to normalize saved numeric fields and sanitize corrupted collections.
-- [x] Added four Node regression tests for numeric-string saves, malformed values, passive income, and upgrade purchase refresh.
-- [ ] CI build/install smoke test on device remains unverified.
+- [x] Found a numeric-type issue in save loading: values like `coins`/`total` were validated with `Number(...)` but not converted, allowing string concatenation when passive rewards were added.
+- [x] Normalize saved numeric fields and sanitize corrupted collections.
+- [x] Four Node regression tests pass: numeric-string saves, malformed values, passive income, and upgrade purchase refresh.
+- [x] GitHub Actions built the patched v23 debug APK; APK ZIP integrity and embedded patch were checked locally. SHA-256: `079f3eddfc1803214695dabd4ea4294696595a9d236062aefcb8934a07acb0f4`.
+- [ ] Install/playtest on an actual Android device; still unverified.
 
 ## v24 — Game feel and content
 - [ ] Replace placeholder/weak enemy and boss art with consistent anime-style assets; keep hero silhouettes distinct from enemies.
