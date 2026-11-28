@@ -93,6 +93,11 @@ jobs:
         run: npx cap add android
         working-directory: ${{ env.PROJECT_DIR }}
 
+      - name: Keep the installed v23 game and its local save available
+        working-directory: ${{ env.PROJECT_DIR }}/android
+        run: |
+          echo "android.buildTypes.debug.applicationIdSuffix = '.v24'" >> app/build.gradle
+
       - name: Sync game
         run: npx cap sync android
         working-directory: ${{ env.PROJECT_DIR }}
